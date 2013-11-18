@@ -1,0 +1,13 @@
+{
+  "name": "varjs",
+  "version": "0.0.1",
+  "private": false,
+  "scripts": {
+    "start": "node var.js"
+  },
+  "dependencies": {
+    "express": "3.4.4",
+    "jade": "*",
+    "less-middleware": "*"
+  }
+}
