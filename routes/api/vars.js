@@ -21,6 +21,7 @@ var _vars = {
     info.count += 1;
     info.type = (typeof v);
     _vars.map[k] = info;
+    return info;
   },
 
   get: function(k) {
