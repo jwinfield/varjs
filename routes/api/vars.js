@@ -1,7 +1,18 @@
 var JSON2 = require('JSON2');
 var is = require('is');
 
+// Default store
+var redis = require("redis"), store = null;
+
+if(1) {
+  store = redis.createClient();
+  store.on("error", function (err) {
+    console.log("Error: " + err);
+  });
+}
+
 var _vars = {
+  // Local store for testing
   map: {},
 
   // Create a new var info instance
@@ -21,7 +32,11 @@ var _vars = {
     var info = _vars.map[k];
     if(!is.defined(info)) {
       info = _vars.newInfo(k, t || (typeof v));
-      _vars.map[k] = info;
+      if(store != null) {
+         store.hset('vars', k, JSON.stringify(info)); 
+      } else {
+        _vars.map[k] = info;
+      }
     }
     info.count += 1;
     return info;
@@ -29,7 +44,20 @@ var _vars = {
 
   // Get info on a var with the specified key
   get: function(k) {
-    return _vars.map[k];
+    return store != null ? JSON.parse(store.hget('vars', k)) : _vars.map[k];
+  },
+
+  // Get info on all vars
+  all: function(callback) {
+    if(is.fn(callback)) {
+      if(store == null) {
+        callback(_vars.map);
+      } else {
+        store.hgetall('vars', function(err, data) {
+          callback(data);
+        });
+      }
+    }
   },
 
   // Put info on a var with the specified key
@@ -52,7 +80,9 @@ var _vars = {
 
 // http GET info for all vars we have info on
 exports.list = function(req, res) {
-  res.json(_vars.map);
+  _vars.all(function(all) {
+    res.json(all);
+  });
 };
 
 // http POST/PUT a value to the var info store Represented as

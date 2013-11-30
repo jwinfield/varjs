@@ -18,6 +18,7 @@
     "jade": "*",
     "less-middleware": "*",
     "is": "*",
-    "JSON2": "*"
+    "JSON2": "*",
+    "redis": "*"
   }
 }
