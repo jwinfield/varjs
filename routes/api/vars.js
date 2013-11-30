@@ -1,3 +1,4 @@
+var JSON2 = require('JSON2');
 var is = require('is');
 
 var _vars = {
@@ -62,7 +63,7 @@ exports.post = exports.put = function(req, res) {
   if(!is.defined(v.name)) {
     res.status(400).send("Expected { name: 'foo', value: bar }");
   }
-  _vars.put(v.name, v.value)
+  _vars.put(v.name, JSON2.decycle(v.value));
   res.json(_vars.get(v.name));
 };
 
