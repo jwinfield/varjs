@@ -2,18 +2,13 @@ var JSON2 = require('JSON2');
 var is = require('is');
 
 // Default store
-var redis = require("redis"), store = null;
-
-if(1) {
-  store = redis.createClient();
-  store.on("error", function (err) {
-    console.log("Error: " + err);
-  });
-}
+var redis = require("redis"),
+    store = redis.createClient();
+    store.on("error", function (err) {
+      console.log("Error: " + err);
+    });
 
 var _vars = {
-  // Local store for testing
-  map: {},
 
   // Create a new var info instance
   newInfo: function(name, type) {
@@ -28,40 +23,45 @@ var _vars = {
   },
 
   // Save info for the specified key/value
-  saveInfo: function(k, v, t) {
-    var info = _vars.map[k];
-    if(!is.defined(info)) {
-      info = _vars.newInfo(k, t || (typeof v));
-      if(store != null) {
-         store.hset('vars', k, JSON.stringify(info)); 
-      } else {
-        _vars.map[k] = info;
+  saveInfo: function(k, v, t, callback) {
+    _vars.get(k, function(info) {
+      if(info === null) {
+        info = _vars.newInfo(k, t || (typeof v));
       }
-    }
-    info.count += 1;
-    return info;
+
+      info.count += 1;
+      store.hset('vars', k, JSON.stringify(info)); 
+
+      if(is.fn(callback)) {
+         callback(info);
+      }
+    });
   },
 
   // Get info on a var with the specified key
-  get: function(k) {
-    return store != null ? JSON.parse(store.hget('vars', k)) : _vars.map[k];
+  get: function(k, callback) {
+    if(is.fn(callback)) {
+      store.hget('vars', k, function(err, data) {
+        callback(JSON.parse(data));
+      });
+    }
   },
 
   // Get info on all vars
   all: function(callback) {
     if(is.fn(callback)) {
-      if(store == null) {
-        callback(_vars.map);
-      } else {
-        store.hgetall('vars', function(err, data) {
-          callback(data);
-        });
-      }
+      store.hgetall('vars', function(err, data) {
+        var vars = {};
+        for(k in data) {
+          vars[k] = JSON.parse(data[k]);
+        }
+        callback(vars);
+      });
     }
   },
 
   // Put info on a var with the specified key
-  put: function(k, v) {
+  put: function(k, v, callback) {
     if(is.array(v)) {
        for(i in v) {
          _vars.put(k, v[i]);
@@ -94,15 +94,16 @@ exports.post = exports.put = function(req, res) {
     res.status(400).send("Expected { name: 'foo', value: bar }");
   }
   _vars.put(v.name, JSON2.decycle(v.value));
-  res.json(_vars.get(v.name));
+  res.status(200).end();
 };
 
 // http GET info stats for a named value
 exports.get = function(req, res) {
-  var info = _vars.get(req.params.name);
-  if(!is.defined(info)) {
-    res.status(404).send("No info found for " + req.params.name);
-  }
-  res.json(info);
+  _vars.get(req.params.name, function(info) {
+    if(!is.defined(info)) {
+      res.status(404).send("No info found for " + req.params.name);
+    }
+    res.json(info);
+  });
 };
 
